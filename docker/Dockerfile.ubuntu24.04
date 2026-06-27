@@ -1,0 +1,38 @@
+# Build image for Ubuntu 24.04 LTS (Noble) — Qt6, DEB packaging
+FROM ubuntu:24.04
+
+LABEL org.opencontainers.image.title="solakon-one-ui-builder-ubuntu24.04"
+LABEL org.opencontainers.image.description="Build environment for solakon-one-ui on Ubuntu 24.04 LTS (Qt6)"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ── Base build tools ───────────────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cmake \
+        ninja-build \
+        g++ \
+        make \
+        git \
+        pkg-config \
+        gzip \
+        tar \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Qt6 development libraries ─────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        qt6-base-dev \
+        qt6-base-private-dev \
+        qt6-serialbus-dev \
+        qt6-charts-dev \
+        qt6-tools-dev \
+        qt6-tools-dev-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── DEB packaging tools ────────────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        dpkg-dev \
+        fakeroot \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /build && chmod 777 /build
+WORKDIR /src
