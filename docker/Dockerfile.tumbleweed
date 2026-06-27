@@ -1,0 +1,37 @@
+# Build image for openSUSE Tumbleweed — Qt6, no KDE Frameworks
+FROM opensuse/tumbleweed:latest
+
+LABEL org.opencontainers.image.title="solakon-one-ui-builder-tumbleweed"
+LABEL org.opencontainers.image.description="Build environment for solakon-one-ui on openSUSE Tumbleweed (Qt6)"
+
+# ── Base build tools ───────────────────────────────────────────────────────────
+RUN zypper --non-interactive install --no-recommends \
+        cmake \
+        ninja \
+        gcc-c++ \
+        make \
+        git \
+        pkg-config \
+        gzip \
+        tar \
+        which
+
+# ── Remove busybox-gawk — conflicts with qt6-printsupport-devel (Qt 6.11+) ────
+RUN zypper --non-interactive remove busybox-gawk && \
+    zypper --non-interactive install --no-recommends gawk
+
+# ── Qt6 development libraries ─────────────────────────────────────────────────
+RUN zypper --non-interactive install --no-recommends \
+        qt6-base-devel \
+        qt6-base-private-devel \
+        qt6-serialbus-devel \
+        qt6-charts-devel \
+        qt6-tools-devel
+
+# ── RPM packaging tools ────────────────────────────────────────────────────────
+RUN zypper --non-interactive install --no-recommends \
+        rpm-build
+
+RUN mkdir -p /build && chmod 777 /build
+
+WORKDIR /src
