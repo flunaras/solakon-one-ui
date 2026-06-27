@@ -32,6 +32,7 @@ MainWindow::MainWindow(ModbusApi *api, QWidget *parent)
 {
     setWindowTitle(QStringLiteral("Solakon One UI"));
     setMinimumSize(900, 600);
+    setDockNestingEnabled(true);
 
     createCentralWidget();
     createDockWidgets();
@@ -138,12 +139,10 @@ void MainWindow::createCentralWidget()
 
 void MainWindow::createDockWidgets()
 {
-    // ── Left docks ─────────────────────────────────────────────────────────
-    m_pvWidget = new PvWidget(this);
-    auto *pvDock = new QDockWidget(QStringLiteral("PV Input"), this);
-    pvDock->setObjectName(QStringLiteral("pvDock"));
-    pvDock->setWidget(m_pvWidget);
-    addDockWidget(Qt::LeftDockWidgetArea, pvDock);
+    // ── Left column (nested — each split is local, not full-width) ──────────
+    //
+    // Battery anchors the column; splitDockWidget() creates a sub-splitter
+    // scoped to this group so it does not span the right-side panels.
 
     m_batteryWidget = new BatteryWidget(this);
     auto *battDock = new QDockWidget(QStringLiteral("Battery"), this);
@@ -151,20 +150,19 @@ void MainWindow::createDockWidgets()
     battDock->setWidget(m_batteryWidget);
     addDockWidget(Qt::LeftDockWidgetArea, battDock);
 
-    // ── Right docks ────────────────────────────────────────────────────────
-    m_gridWidget = new GridWidget(this);
-    auto *gridDock = new QDockWidget(QStringLiteral("Grid"), this);
-    gridDock->setObjectName(QStringLiteral("gridDock"));
-    gridDock->setWidget(m_gridWidget);
-    addDockWidget(Qt::RightDockWidgetArea, gridDock);
-
-    m_energyWidget = new EnergyWidget(this);
-    auto *energyDock = new QDockWidget(QStringLiteral("Energy"), this);
-    energyDock->setObjectName(QStringLiteral("energyDock"));
-    energyDock->setWidget(m_energyWidget);
-    addDockWidget(Qt::RightDockWidgetArea, energyDock);
+    // PV Input below Battery — local left-column splitter only
+    m_pvWidget = new PvWidget(this);
+    auto *pvDock = new QDockWidget(QStringLiteral("PV Input"), this);
+    pvDock->setObjectName(QStringLiteral("pvDock"));
+    pvDock->setWidget(m_pvWidget);
+    splitDockWidget(battDock, pvDock, Qt::Vertical);
 
     // ── Bottom docks (tabbed) ──────────────────────────────────────────────
+    //
+    // Keeping Device Info and Alarms in the bottom area preserves a visible
+    // drop target there; users can drag them into the left column if preferred
+    // and the nested layout will create a local split (not a full-width one).
+
     m_infoWidget = new InfoWidget(this);
     auto *infoDock = new QDockWidget(QStringLiteral("Device Info"), this);
     infoDock->setObjectName(QStringLiteral("infoDock"));
@@ -175,15 +173,30 @@ void MainWindow::createDockWidgets()
     auto *alarmDock = new QDockWidget(QStringLiteral("Alarms & Status"), this);
     alarmDock->setObjectName(QStringLiteral("alarmDock"));
     alarmDock->setWidget(m_alarmWidget);
-    addDockWidget(Qt::BottomDockWidgetArea, alarmDock);
     tabifyDockWidget(infoDock, alarmDock);
 
-    // ── PV chart dock (right, below grid/energy) ───────────────────────────
+    // ── Right column (PV Chart + Grid + Energy tabbed) ──────────────────────
+
     m_pvChartWidget = new PvChartWidget(this);
     auto *pvChartDock = new QDockWidget(QStringLiteral("PV Chart"), this);
     pvChartDock->setObjectName(QStringLiteral("pvChartDock"));
     pvChartDock->setWidget(m_pvChartWidget);
     addDockWidget(Qt::RightDockWidgetArea, pvChartDock);
+
+    m_gridWidget = new GridWidget(this);
+    auto *gridDock = new QDockWidget(QStringLiteral("Grid"), this);
+    gridDock->setObjectName(QStringLiteral("gridDock"));
+    gridDock->setWidget(m_gridWidget);
+    tabifyDockWidget(pvChartDock, gridDock);
+
+    m_energyWidget = new EnergyWidget(this);
+    auto *energyDock = new QDockWidget(QStringLiteral("Energy"), this);
+    energyDock->setObjectName(QStringLiteral("energyDock"));
+    energyDock->setWidget(m_energyWidget);
+    tabifyDockWidget(pvChartDock, energyDock);
+
+    // Raise PV Chart tab so it is visible on first launch
+    pvChartDock->raise();
 }
 
 void MainWindow::createMenus()
@@ -293,7 +306,7 @@ void MainWindow::saveWindowState()
 {
     QSettings s;
     s.setValue(QStringLiteral("window/geometry"), saveGeometry());
-    s.setValue(QStringLiteral("window/state"),    saveState());
+    s.setValue(QStringLiteral("window/state"),    saveState(1));
 }
 
 void MainWindow::restoreWindowState()
@@ -303,7 +316,7 @@ void MainWindow::restoreWindowState()
         restoreGeometry(s.value(QStringLiteral("window/geometry")).toByteArray());
     }
     if (s.contains(QStringLiteral("window/state"))) {
-        restoreState(s.value(QStringLiteral("window/state")).toByteArray());
+        restoreState(s.value(QStringLiteral("window/state")).toByteArray(), 1);
     }
 }
 
